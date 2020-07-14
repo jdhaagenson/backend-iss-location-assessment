@@ -2,28 +2,24 @@
 
 __author__ = "Jordan Haagenson"
 
+
+##
 # Import packages
 import requests
-import io
 import turtle
-import datetime
 import time
 
-
-
-
-
+##
 # Create global variables
-# printer = pprint.pprint
 astros_API = 'http://api.open-notify.org/astros.json'
 iss_now_API = 'http://api.open-notify.org/iss-now.json'
-nasa_check_iss = 'https://spotthestation.nasa.gov/tracking_map.cfm'
 next_pass = 'http://api.open-notify.org/iss-pass.json'
-indiana_lat, indiana_lon = indiana_coords = 39.76, -86.159
+indiana_lat, indiana_lon = 39.76, -86.159
 bg = 'map.gif'
 iss_icon = 'iss.gif'
 
 
+##
 def get_request_to_dict(url):
     """
     Returns a dictionary of response to get request of url provided.
@@ -35,15 +31,17 @@ def get_request_to_dict(url):
     return d
 
 
+##
 def time_convert(timestamp):
     """
     Takes in a time stamp and converts it to a human-readable form
     :param timestamp: int
     :return: datetime object
     """
-    return time.ctime(timestamp)
+    return time.ctime(int(timestamp))
 
 
+##
 def print_in_orbit(dictionary):
     """
     Print out number of astronauts currently in orbit, their names and what 
@@ -54,10 +52,11 @@ def print_in_orbit(dictionary):
     people = dictionary['people']
     print('Astronauts in currently in space: ', dictionary['number'])
     for i in people:
-        print(f"{i['name']} aboard the {i['craft']}")
+        print(f"{i['name']}; {i['craft']}")
     return
 
 
+##
 def find_iss_location():
     """
     Gets current iss location at current time
@@ -67,84 +66,97 @@ def find_iss_location():
     return current
 
 
-def setup_screen(bg_img):
+##
+def setup(bg_img=bg):
     """
     Creates a turtle screen, displays a background image, and sets world coords
     :param bg_img:
     :return: window
     """
+    # turtle.register_shape(img)
     screen = turtle.Screen()
-    # screen = turtle.Screen()
+    screen.setup(width=720, height=360, startx=0, starty=0)
     screen.setworldcoordinates(-180, -90, 180, 90)
-    screen.mode('world')
+    turtle.mode('world')
     screen.bgpic(bg_img)
-    screen.update()
+    # pen = turtle.Turtle(shape=img)
     return screen
 
 
-def setup_pen(img):
+##
+def goto_iss(longitude, latitude, indiana=False):
     """
-    Sets icon of pen object for turtle screen
-    :param img: image file name
-    :type img: str
-    :return:pen
-    """
-    turtle.addshape(img)
-    pen = turtle.getpen()
-    pen.shape(img)
-    return pen
-
-
-def goto_iss(screen, pen, longitude, latitude):
-    """
-    Move icon to current iss location
-    :param pen: turtle pen object
-    :param longitude: float
-    :param latitude: float
+    Move pen to coordinates provided
+    :param longitude: longitude
+    :type longitude: float
+    :param latitude: latitude
+    :type latitude: float
+    :param indiana: when False (default) goto_coord will move ISS
+    :type indiana: bool
     :return: pen
+    :rtype: <class 'turtle.Turtle'>
     """
-    pen.penup()
-    pen.goto(longitude, latitude)
-    screen.update()
-    return pen
+    if not indiana:
+        turtle.register_shape(iss_icon)
+        pen = turtle.Turtle(shape=iss_icon)
+        pen.penup()
+        pen.setpos(float(longitude), float(latitude))
+        return pen
+    if indiana:
+        pen = turtle.Turtle(visible=False)
+        pen.penup()
+        pen.color('yellow')
+        pen.setpos(float(longitude), float(latitude))
+        pen.dot(10, 'yellow')
+        return pen
 
 
-def next_indie_pass(current_lat, current_lon):
+##
+def mark_indiana(timestamp=None):
     """
-    Draw a dot on next flyover of Indianapolis
-    :param current_lat: int or float
-    :param current_lon: int or float
-    :return:map of world
+    Marks Indianapolis with a yellow dot and writes time of next
+    pass over if timestamp is specified
+    :param timestamp: converted timestamp of next passover of Indianapolis
+    :type timestamp: str
     """
-    response = requests.get(next_pass + "?lat=" + str(current_lat) + "&lon="+str(current_lon))
-    r = response.json()
-    time.ctime()
-    return r
+    pen = goto_iss(indiana_lon, indiana_lat, indiana=True)
+    print(indiana_lon, indiana_lat)
+    if timestamp is not None:
+        pen.write(timestamp, align="right", font=('Courier New', 10, 'bold'))
 
 
-def test_iss_location(iss_location):
-    nasa = requests.get(nasa_check_iss)
-    return iss_location == nasa
+##
+def next_indie_pass():
+    """
+    Gets the next pass over timestamp, converts it, and passes it to mark_indiana() function to write it to the screen
+    """
+    response = requests.get(next_pass + "?lat=39.76&lon=-86.159")
+    response = response.json()
+    t = response['response'][0]['risetime']
+    tme = time_convert(t)
+    print("Next passover of Indianapolis, Indiana will occur on:")
+    print(tme)
+    return mark_indiana(tme)
 
 
+##
 def main():
-    print("Part A\n")
+    print("Obtain full names of every astronaut currently in orbit and the name of their craft")
     astronauts = get_request_to_dict(astros_API)
     print_in_orbit(astronauts)
-    
-    print("Part B\n")
+    print("Current location where the International Space Station is currently orbiting:")
     current = find_iss_location()
+    print(current['iss_position'])
     long = current['iss_position']['longitude']
     lat = current['iss_position']['latitude']
-    test = test_iss_location(current)
+    setup()
+    goto_iss(longitude=long, latitude=lat)
+    next_indie_pass()
+    turtle.Screen().exitonclick()
 
-    print("Part C\n")
-    window = setup_screen(bg)
-    pen = setup_pen(iss_icon)
-    goto_iss(window, pen, long, lat)
 
-    print("Part D\n")
-    next_indie_pass(39.76, -86.159)
-
+##
 if __name__ == '__main__':
     main()
+
+
